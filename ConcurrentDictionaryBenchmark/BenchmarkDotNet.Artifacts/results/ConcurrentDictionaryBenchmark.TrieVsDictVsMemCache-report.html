@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>ConcurrentDictionaryBenchmark.TrieVsDictVsMemCache-20230622-155343</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet=v0.13.5, OS=Windows 11 (10.0.22621.1848/22H2/2022Update/SunValley2)
+Intel Core i9-10900K CPU 3.70GHz, 1 CPU, 20 logical and 10 physical cores
+.NET SDK=7.0.400-preview.23281.13
+  [Host]     : .NET 6.0.18 (6.0.1823.26907), X64 RyuJIT AVX2
+  DefaultJob : .NET 6.0.18 (6.0.1823.26907), X64 RyuJIT AVX2
+</code></pre>
+<pre><code></code></pre>
+
+<table>
+<thead><tr><th>              Method</th><th>UserSize</th><th>GetOperations</th><th>TenantSize</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Median</th><th>Ratio</th><th>RatioSD</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>ConcurrentDictWithComparer</td><td>10000</td><td>10000</td><td>20</td><td>5.945 ms</td><td>0.1185 ms</td><td>0.2746 ms</td><td>5.911 ms</td><td>1.00</td><td>0.00</td><td>406.2500</td><td>281.2500</td><td>117.1875</td><td>3.6 MB</td><td>1.00</td>
+</tr><tr><td>CompressedNgramTrie</td><td>10000</td><td>10000</td><td>20</td><td>3.575 ms</td><td>0.0674 ms</td><td>0.0563 ms</td><td>3.560 ms</td><td>0.61</td><td>0.03</td><td>796.8750</td><td>398.4375</td><td>-</td><td>7.97 MB</td><td>2.21</td>
+</tr><tr><td>MemoryCache</td><td>10000</td><td>10000</td><td>20</td><td>8.439 ms</td><td>0.1615 ms</td><td>0.1795 ms</td><td>8.366 ms</td><td>1.42</td><td>0.06</td><td>531.2500</td><td>312.5000</td><td>93.7500</td><td>4.48 MB</td><td>1.24</td>
+</tr><tr><td>ConcurrentDictWithComparer</td><td>10000</td><td>100000</td><td>20</td><td>16.569 ms</td><td>0.3278 ms</td><td>0.4376 ms</td><td>16.456 ms</td><td>1.00</td><td>0.00</td><td>406.2500</td><td>250.0000</td><td>93.7500</td><td>3.94 MB</td><td>1.00</td>
+</tr><tr><td>CompressedNgramTrie</td><td>10000</td><td>100000</td><td>20</td><td>11.883 ms</td><td>0.2375 ms</td><td>0.3768 ms</td><td>11.841 ms</td><td>0.72</td><td>0.03</td><td>3375.0000</td><td>734.3750</td><td>234.3750</td><td>31.31 MB</td><td>7.95</td>
+</tr><tr><td>MemoryCache</td><td>10000</td><td>100000</td><td>20</td><td>21.870 ms</td><td>0.3262 ms</td><td>0.2891 ms</td><td>21.800 ms</td><td>1.31</td><td>0.04</td><td>500.0000</td><td>281.2500</td><td>62.5000</td><td>4.64 MB</td><td>1.18</td>
+</tr><tr><td>ConcurrentDictWithComparer</td><td>50000</td><td>10000</td><td>20</td><td>37.952 ms</td><td>0.7299 ms</td><td>0.9490 ms</td><td>37.859 ms</td><td>1.00</td><td>0.00</td><td>1937.5000</td><td>1125.0000</td><td>375.0000</td><td>18.25 MB</td><td>1.00</td>
+</tr><tr><td>CompressedNgramTrie</td><td>50000</td><td>10000</td><td>20</td><td>66.283 ms</td><td>1.1522 ms</td><td>1.0778 ms</td><td>66.161 ms</td><td>1.74</td><td>0.05</td><td>3750.0000</td><td>2250.0000</td><td>750.0000</td><td>32.62 MB</td><td>1.79</td>
+</tr><tr><td>MemoryCache</td><td>50000</td><td>10000</td><td>20</td><td>46.980 ms</td><td>0.8746 ms</td><td>2.2886 ms</td><td>46.349 ms</td><td>1.23</td><td>0.06</td><td>2181.8182</td><td>1272.7273</td><td>363.6364</td><td>19.14 MB</td><td>1.05</td>
+</tr><tr><td>ConcurrentDictWithComparer</td><td>50000</td><td>100000</td><td>20</td><td>57.379 ms</td><td>2.2877 ms</td><td>6.6007 ms</td><td>57.719 ms</td><td>1.00</td><td>0.00</td><td>1727.2727</td><td>1000.0000</td><td>272.7273</td><td>18.14 MB</td><td>1.00</td>
+</tr><tr><td>CompressedNgramTrie</td><td>50000</td><td>100000</td><td>20</td><td>80.262 ms</td><td>2.0618 ms</td><td>6.0794 ms</td><td>79.914 ms</td><td>1.42</td><td>0.19</td><td>6166.6667</td><td>2833.3333</td><td>833.3333</td><td>55.96 MB</td><td>3.08</td>
+</tr><tr><td>MemoryCache</td><td>50000</td><td>100000</td><td>20</td><td>62.809 ms</td><td>1.2413 ms</td><td>3.3347 ms</td><td>61.742 ms</td><td>1.12</td><td>0.16</td><td>2142.8571</td><td>1142.8571</td><td>285.7143</td><td>19.25 MB</td><td>1.06</td>
+</tr></tbody></table>
+</body>
+</html>

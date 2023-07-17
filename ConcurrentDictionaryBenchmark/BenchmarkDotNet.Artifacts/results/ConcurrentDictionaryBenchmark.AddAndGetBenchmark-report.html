@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>ConcurrentDictionaryBenchmark.AddAndGetBenchmark-20230614-133335</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet=v0.13.5, OS=Windows 11 (10.0.22621.1702/22H2/2022Update/SunValley2)
+Intel Core i9-10900K CPU 3.70GHz, 1 CPU, 20 logical and 10 physical cores
+.NET SDK=7.0.400-preview.23260.7
+  [Host]     : .NET 6.0.18 (6.0.1823.26907), X64 RyuJIT AVX2
+  DefaultJob : .NET 6.0.18 (6.0.1823.26907), X64 RyuJIT AVX2
+</code></pre>
+<pre><code></code></pre>
+
+<table>
+<thead><tr><th>                Method</th><th>Size</th><th>GetOperations</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Median</th><th>Ratio</th><th>RatioSD</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>WithComparer</td><td>1000</td><td>10000</td><td>1.163 ms</td><td>0.0084 ms</td><td>0.0074 ms</td><td>1.162 ms</td><td>1.00</td><td>0.00</td><td>41.0156</td><td>13.6719</td><td>-</td><td>427.61 KB</td><td>1.00</td>
+</tr><tr><td>WithGuidToStringPairComparer</td><td>1000</td><td>10000</td><td>1.234 ms</td><td>0.0090 ms</td><td>0.0080 ms</td><td>1.233 ms</td><td>1.06</td><td>0.01</td><td>44.9219</td><td>13.6719</td><td>-</td><td>462.24 KB</td><td>1.08</td>
+</tr><tr><td>WithComparerWithHashCombine</td><td>1000</td><td>10000</td><td>1.195 ms</td><td>0.0169 ms</td><td>0.0150 ms</td><td>1.195 ms</td><td>1.03</td><td>0.01</td><td>48.8281</td><td>17.5781</td><td>-</td><td>499.11 KB</td><td>1.17</td>
+</tr><tr><td>WithComparer</td><td>1000</td><td>500000</td><td>50.735 ms</td><td>0.4202 ms</td><td>0.3930 ms</td><td>50.780 ms</td><td>1.00</td><td>0.00</td><td>-</td><td>-</td><td>-</td><td>266 KB</td><td>1.00</td>
+</tr><tr><td>WithGuidToStringPairComparer</td><td>1000</td><td>500000</td><td>50.303 ms</td><td>0.2033 ms</td><td>0.1802 ms</td><td>50.331 ms</td><td>0.99</td><td>0.01</td><td>-</td><td>-</td><td>-</td><td>471.66 KB</td><td>1.77</td>
+</tr><tr><td>WithComparerWithHashCombine</td><td>1000</td><td>500000</td><td>47.601 ms</td><td>0.2745 ms</td><td>0.2433 ms</td><td>47.629 ms</td><td>0.94</td><td>0.01</td><td>-</td><td>-</td><td>-</td><td>487.78 KB</td><td>1.83</td>
+</tr><tr><td>WithComparer</td><td>10000</td><td>10000</td><td>6.734 ms</td><td>0.1300 ms</td><td>0.1596 ms</td><td>6.720 ms</td><td>1.00</td><td>0.00</td><td>429.6875</td><td>296.8750</td><td>117.1875</td><td>3932.21 KB</td><td>1.00</td>
+</tr><tr><td>WithGuidToStringPairComparer</td><td>10000</td><td>10000</td><td>6.159 ms</td><td>0.1104 ms</td><td>0.1033 ms</td><td>6.108 ms</td><td>0.91</td><td>0.02</td><td>390.6250</td><td>265.6250</td><td>117.1875</td><td>3652.53 KB</td><td>0.93</td>
+</tr><tr><td>WithComparerWithHashCombine</td><td>10000</td><td>10000</td><td>5.983 ms</td><td>0.1195 ms</td><td>0.2495 ms</td><td>5.880 ms</td><td>0.90</td><td>0.05</td><td>367.1875</td><td>242.1875</td><td>117.1875</td><td>3432.76 KB</td><td>0.87</td>
+</tr><tr><td>WithComparer</td><td>10000</td><td>500000</td><td>60.959 ms</td><td>1.1906 ms</td><td>0.9942 ms</td><td>60.720 ms</td><td>1.00</td><td>0.00</td><td>250.0000</td><td>125.0000</td><td>-</td><td>3694.59 KB</td><td>1.00</td>
+</tr><tr><td>WithGuidToStringPairComparer</td><td>10000</td><td>500000</td><td>63.573 ms</td><td>1.0264 ms</td><td>0.9099 ms</td><td>63.428 ms</td><td>1.04</td><td>0.02</td><td>250.0000</td><td>125.0000</td><td>-</td><td>3377.22 KB</td><td>0.91</td>
+</tr><tr><td>WithComparerWithHashCombine</td><td>10000</td><td>500000</td><td>61.663 ms</td><td>1.0286 ms</td><td>0.9118 ms</td><td>61.128 ms</td><td>1.01</td><td>0.03</td><td>333.3333</td><td>111.1111</td><td>-</td><td>3845.7 KB</td><td>1.04</td>
+</tr></tbody></table>
+</body>
+</html>
