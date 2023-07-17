@@ -1,6 +1,8 @@
 ﻿using BenchmarkDotNet.Attributes;
+using BitFaster.Caching.Lru;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
@@ -10,12 +12,12 @@ namespace ConcurrentDictionaryBenchmark
     [MemoryDiagnoser]
     public class TrieVsDictVsMemCacheConcurrency
     {
-        [Params(10000, 50000)]
-        //[Params(10000)]
+        //[Params(10000, 50000)]
+        [Params(50000)]
         public static int UserSize { get; set; } = 10000;
 
-        [Params(10000, 100000)]
-        //[Params(10000)]
+        //[Params(10000, 100000)]
+        [Params(100000)]
         public static int GetOperations { get; set; } = 10000;
 
         [Params(20)]
@@ -29,6 +31,8 @@ namespace ConcurrentDictionaryBenchmark
 
         private static IList<KeyValuePair<Guid, string>> keyValuePairs = new List<KeyValuePair<Guid, string>>();
         private static IList<KeyValuePair<Guid, string>> nonExistKeyValuePairs = new List<KeyValuePair<Guid, string>>();
+        private static IList<UserCacheKey> userCacheKeys = new List<UserCacheKey>();
+        private static IList<UserCacheKey> nonExistUserCacheKeys = new List<UserCacheKey>();
         private static IList<CssUser> cssUsers = new List<CssUser>();
         private static Guid[] tenantIds;
         private static IList<Tuple<string, CssUser>>[] valuesPerTenant;
@@ -61,8 +65,12 @@ namespace ConcurrentDictionaryBenchmark
                     IdentityResolutionSuccess = true
                 };
                 keyValuePairs.Add(new KeyValuePair<Guid, string>(tenantId, smtpAddress));
+                userCacheKeys.Add(new UserCacheKey { TenantId = tenantId, SmtpAddress = smtpAddress });
                 cssUsers.Add(cssUser);
-                nonExistKeyValuePairs.Add(new KeyValuePair<Guid, string>(Guid.NewGuid(), Utils.GenerateRandomSmtpAddress()));
+                var nonExistTenantId = Guid.NewGuid();
+                var nonExistSmtpAddress = Utils.GenerateRandomSmtpAddress();
+                nonExistKeyValuePairs.Add(new KeyValuePair<Guid, string>(nonExistTenantId, nonExistSmtpAddress));
+                nonExistUserCacheKeys.Add(new UserCacheKey { TenantId = nonExistTenantId, SmtpAddress = nonExistSmtpAddress });
 
                 if (valuesPerTenant[tenantIdx] == null)
                 {
@@ -157,7 +165,7 @@ namespace ConcurrentDictionaryBenchmark
             });
         }
 
-        //[Benchmark]
+        [Benchmark]
         public void MemoryCacheWithSlidingExpiration()
         {
             var memcachePerTenant = new MemoryCache[TenantSize];
@@ -180,6 +188,7 @@ namespace ConcurrentDictionaryBenchmark
                         entry =>
                         {
                             entry.SlidingExpiration = TimeSpan.FromMilliseconds(SlidingExpirationInMs);
+                            entry.Size = 1;
                             return tuple.Item2;
                         });
                 }
@@ -201,40 +210,85 @@ namespace ConcurrentDictionaryBenchmark
             });
         }
 
-        //[Benchmark]
-        public void MemoryCacheNotPerTenant()
+        [Benchmark]
+        public void MemoryCacheNotPerTenantWithSizeLimitAndSlidingExpiration()
         {
             var sizeLimit = UserSize * 2 / 3;
             var options = new MemoryCacheOptions { SizeLimit = sizeLimit };
             var memcache = new MemoryCache(options);
 
-
             Parallel.For(0, UserSize, parallelOptions, i =>
             {
-                foreach (var tuple in keyValuePairs[i])
-                {
-                    memcachePerTenant[i].GetOrCreate(
-                        tuple.Item1,
-                        entry =>
-                        {
-                            entry.SlidingExpiration = TimeSpan.FromMilliseconds(SlidingExpirationInMs);
-                            return tuple.Item2;
-                        });
-                }
+                memcache.GetOrCreate(
+                    userCacheKeys[i], 
+                    entry => {
+                        entry.SlidingExpiration = TimeSpan.FromMilliseconds(SlidingExpirationInMs);
+                        entry.Size = 1;
+                        return cssUsers[i];
+                    });
             });
 
             Parallel.For(0, GetOperations, parallelOptions, i =>
             {
                 var index = i % UserSize;
-                var tenantIdx = index % TenantSize;
-                var tenantId = keyValuePairs[index].Key;
-                //Assert.IsTrue(tenantId == tenantIds[tenantIdx]);
-                var smtpAddress = keyValuePairs[index].Value;
 
-                memcachePerTenant[tenantIdx].TryGetValue(smtpAddress, out CssUser cssUser);
+                memcache.TryGetValue(userCacheKeys[index], out CssUser cssUser);
                 //Assert.IsNotNull(cssUser);
 
-                memcachePerTenant[tenantIdx].TryGetValue(nonExistKeyValuePairs[index].Value, out CssUser cssUser2);
+                memcache.TryGetValue(nonExistUserCacheKeys[index], out CssUser cssUser2);
+                //Assert.AreEqual(default(CssUser), cssUser2);
+            });
+        }
+
+        [Benchmark]
+        public void MemoryCacheNotPerTenant()
+        {
+            var options = new MemoryCacheOptions();
+            var memcache = new MemoryCache(options);
+
+            Parallel.For(0, UserSize, parallelOptions, i =>
+            {
+                memcache.GetOrCreate(
+                    userCacheKeys[i],
+                    entry => {
+                        entry.SlidingExpiration = TimeSpan.FromMilliseconds(SlidingExpirationInMs);
+                        return cssUsers[i];
+                    });
+            });
+
+            Parallel.For(0, GetOperations, parallelOptions, i =>
+            {
+                var index = i % UserSize;
+
+                memcache.TryGetValue(userCacheKeys[index], out CssUser cssUser);
+                //Assert.IsNotNull(cssUser);
+
+                memcache.TryGetValue(nonExistUserCacheKeys[index], out CssUser cssUser2);
+                //Assert.AreEqual(default(CssUser), cssUser2);
+            });
+        }
+
+        [Benchmark]
+        public void ConcurrentLru()
+        {
+            var lruCache = new ConcurrentLru<UserCacheKey, CssUser>(UserSize / 2);
+            Parallel.For(0, UserSize, parallelOptions, i =>
+            {
+                lruCache.GetOrAdd(
+                    userCacheKeys[i],
+                    key => {
+                        return cssUsers[i];
+                    });
+            });
+
+            Parallel.For(0, GetOperations, parallelOptions, i =>
+            {
+                var index = i % UserSize;
+
+                lruCache.TryGet(userCacheKeys[index], out CssUser cssUser);
+                //Assert.IsNotNull(cssUser);
+
+                lruCache.TryGet(nonExistUserCacheKeys[index], out CssUser cssUser2);
                 //Assert.AreEqual(default(CssUser), cssUser2);
             });
         }
@@ -258,17 +312,15 @@ namespace ConcurrentDictionaryBenchmark
         {
             Parallel.For(0, UserSize, parallelOptions, i =>
             {
-                var userCacheKey = new UserCacheKey { TenantId = keyValuePairs[i].Key, SmtpAddress = keyValuePairs[i].Value };
-                //dict.TryAdd(keyValuePairs[i], cssUsers[i]);
-                dict.TryAdd(userCacheKey, cssUsers[i]);
+                dict.TryAdd(userCacheKeys[i], cssUsers[i]);
             });
 
             Parallel.For(0, GetOperations, parallelOptions, i =>
             {
                 var index = i % UserSize;
-                dict.TryGetValue(new UserCacheKey { TenantId = keyValuePairs[index].Key, SmtpAddress = keyValuePairs[index].Value }, out var cssUser2);
+                dict.TryGetValue(userCacheKeys[index], out var cssUser2);
                 //dict.TryGetValue(nonExistKeyValuePairs[index], out var cssUser1);
-                dict.TryGetValue(new UserCacheKey { TenantId = nonExistKeyValuePairs[index].Key, SmtpAddress = nonExistKeyValuePairs[index].Value }, out var cssUser1);
+                dict.TryGetValue(nonExistUserCacheKeys[index], out var cssUser1);
             });
         }
     }

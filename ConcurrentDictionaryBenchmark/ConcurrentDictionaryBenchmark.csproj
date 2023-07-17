@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
+	<PackageReference Include="BitFaster.Caching" Version="2.2.0" />
     <PackageReference Include="MSTest.TestFramework" Version="3.0.4" />
 	<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="7.0.0" />
   </ItemGroup>
