@@ -44,7 +44,6 @@ namespace ConcurrentDictionaryBenchmark
         private static IList<Tuple<string, CssUser>>[] valuesPerTenant;
         private static ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = ThreadCount };
         private static int[] getOrAddOperationIdx = new int[GetOrAddOperations];
-        private static SemaphoreSlim semaphore = new SemaphoreSlim(ThreadCount);
 
         [GlobalSetup]
         public void Setup()
@@ -180,6 +179,7 @@ namespace ConcurrentDictionaryBenchmark
                 TrackStatistics = EnableStatistics
             };
 
+            var semaphore = new SemaphoreSlim(ThreadCount);
             var memCache = new MemoryCache(options);
 
             var tasks = Enumerable.Range(0, GetOrAddOperations).Select(async i =>
@@ -229,6 +229,7 @@ namespace ConcurrentDictionaryBenchmark
                 TrackStatistics = EnableStatistics
             };
 
+            var semaphore = new SemaphoreSlim(ThreadCount);
             var memCache = new MemoryCache(options);
 
             var tasks = Enumerable.Range(0, GetOrAddOperations).Select(async i =>
@@ -288,6 +289,8 @@ namespace ConcurrentDictionaryBenchmark
         public void ConcurrentLru()
         {
             var lruCache = new ConcurrentLru<UserCacheKey, CssUser>(CacheSize);
+            var semaphore = new SemaphoreSlim(ThreadCount);
+
             var tasks = Enumerable.Range(0, GetOrAddOperations).Select(async i =>
             {
                 await semaphore.WaitAsync();
