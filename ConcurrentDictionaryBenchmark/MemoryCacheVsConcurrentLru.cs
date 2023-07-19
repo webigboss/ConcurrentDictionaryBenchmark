@@ -285,7 +285,7 @@ namespace ConcurrentDictionaryBenchmark
             });
         }
 
-        //[Benchmark]
+        [Benchmark]
         public void ConcurrentLru()
         {
             var lruCache = new ConcurrentLru<UserCacheKey, CssUser>(CacheSize);
