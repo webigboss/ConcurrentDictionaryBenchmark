@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>ConcurrentDictionaryBenchmark.MemoryCacheVsConcurrentLru-20230718-215726</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet=v0.13.5, OS=Windows 11 (10.0.22621.1992/22H2/2022Update/SunValley2)
+Intel Core i9-10900K CPU 3.70GHz, 1 CPU, 20 logical and 10 physical cores
+.NET SDK=7.0.400-preview.23322.28
+  [Host] : .NET 6.0.20 (6.0.2023.32017), X64 RyuJIT AVX2
+</code></pre>
+<pre><code></code></pre>
+
+<table>
+<thead><tr><th>Method</th><th>UserSize</th><th>CacheSize</th><th>GetOrAddOperations</th><th>ThreadCount</th><th>EnableStatistics</th><th>Mean</th><th>Error</th>
+</tr>
+</thead><tbody><tr><td>MemoryCache</td><td>200000</td><td>50000</td><td>1000000</td><td>4</td><td>False</td><td>NA</td><td>NA</td>
+</tr></tbody></table>
+</body>
+</html>

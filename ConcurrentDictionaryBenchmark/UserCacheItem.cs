@@ -1,6 +1,6 @@
 ﻿namespace ConcurrentDictionaryBenchmark
 {
-    public record struct UserCacheKey : IEquatable<UserCacheKey>
+    public struct UserCacheKey : IEquatable<UserCacheKey>
     {
         public Guid TenantId { get; set; }
         
