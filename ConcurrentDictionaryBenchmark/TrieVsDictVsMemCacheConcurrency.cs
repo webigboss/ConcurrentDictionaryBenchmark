@@ -81,7 +81,7 @@ namespace ConcurrentDictionaryBenchmark
             }
         }
 
-        [Benchmark(Baseline = true)]
+        //[Benchmark(Baseline = true)]
         public void ConcurrentDictWithComparer()
         {
             var dict = new ConcurrentDictionary<KeyValuePair<Guid, string>, CssUser>(KeyValuePairComparer<Guid, string>.Instance);
@@ -165,7 +165,7 @@ namespace ConcurrentDictionaryBenchmark
             });
         }
 
-        [Benchmark]
+        //[Benchmark]
         public void MemoryCacheWithSlidingExpiration()
         {
             var memcachePerTenant = new MemoryCache[TenantSize];
@@ -210,7 +210,7 @@ namespace ConcurrentDictionaryBenchmark
             });
         }
 
-        [Benchmark]
+        //[Benchmark]
         public void MemoryCacheNotPerTenantWithSizeLimitAndSlidingExpiration()
         {
             var sizeLimit = UserSize * 2 / 3;
@@ -240,7 +240,7 @@ namespace ConcurrentDictionaryBenchmark
             });
         }
 
-        [Benchmark]
+        //[Benchmark]
         public void MemoryCacheNotPerTenant()
         {
             var options = new MemoryCacheOptions();
@@ -268,7 +268,7 @@ namespace ConcurrentDictionaryBenchmark
             });
         }
 
-        [Benchmark]
+        //[Benchmark]
         public void ConcurrentLru()
         {
             var lruCache = new ConcurrentLru<UserCacheKey, CssUser>(UserSize / 2);

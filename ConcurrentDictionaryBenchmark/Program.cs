@@ -11,9 +11,9 @@ namespace ConcurrentDictionaryBenchmark
             //BenchmarkRunner.Run<KeyValuePairBenchmark>();
             //BenchmarkRunner.Run<GuidKeyBenchmark>();
             //BenchmarkRunner.Run<TrieVsDictVsMemCache>();
-            //BenchmarkRunner.Run<TrieVsDictVsMemCacheConcurrency>();
+            BenchmarkRunner.Run<TrieVsDictVsMemCacheConcurrency>();
             //BenchmarkRunner.Run<MemoryCacheVsConcurrentLru>();
-            BenchmarkRunner.Run<CachePeerCompare>();
+            //BenchmarkRunner.Run<CachePeerCompare>();
 
             //int counter = 0;
 

@@ -318,7 +318,7 @@ namespace ConcurrentDictionaryBenchmark
                 
                 if (lruCache.Metrics.HasValue)
                 {
-                    Console.WriteLine($"{nameof(ConcurrentLru)} stat: Hit Rate: {metrics.HitRatio}%, Evicted :{metrics.Evicted}, Size: {lruCache.Count}");
+                    Console.WriteLine($"{nameof(ConcurrentLru)} stat: Hit Rate: {metrics.HitRatio * 100}%, Evicted :{metrics.Evicted}, Size: {lruCache.Count}");
                 }
                 else
                 {
