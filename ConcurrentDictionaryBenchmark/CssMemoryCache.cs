@@ -23,4 +23,13 @@ namespace ConcurrentDictionaryBenchmark
             internal DoubleLinkedListNode? next;
         }
     }
+
+    interface ICssMemoryCache<TKey, TValue> where TKey : notnull, IEquatable<TKey>
+    {
+        int Count { get; }
+        
+        bool GetOrAdd(TKey key, Func<TKey, TValue> valueFactory, out TValue value);
+        
+        bool TryGetValue(TKey key, out TValue value);
+    }
 }

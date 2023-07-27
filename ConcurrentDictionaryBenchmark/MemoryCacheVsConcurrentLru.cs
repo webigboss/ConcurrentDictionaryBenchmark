@@ -1,4 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
+using BitFaster.Caching;
+using BitFaster.Caching.Lfu;
 using BitFaster.Caching.Lru;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -15,7 +17,7 @@ namespace ConcurrentDictionaryBenchmark
         [Params(200_000)]
         public static int UserSize { get; set; } = 200_000;
 
-        [Params(50_000)]
+        [Params(10_000, 50_000)]
         public static int CacheSize { get; set; } = 50_000;
 
         [Params(1_000_000)]
@@ -27,7 +29,8 @@ namespace ConcurrentDictionaryBenchmark
         public static double OneSDPercent { get; set; } = 0.2;
 
         //[Params(5)]
-        public static int SlidingExpirationInMs { get; set; } = 5;
+        public static int SlidingExpirationInMs { get; set; } = 1000;
+        public static int AbsoluteExpirationInMs { get; set; } = 200;
 
         [Params(false)]
         public bool EnableStatistics { get; set; } = true;
@@ -39,7 +42,7 @@ namespace ConcurrentDictionaryBenchmark
         private static IList<UserCacheKey> userCacheKeys = new List<UserCacheKey>();
         private static IList<UserCacheKey> nonExistUserCacheKeys = new List<UserCacheKey>();
         private static IList<CssUser> cssUsers = new List<CssUser>();
-        //private static IList<CssUserSlim> cssSlimUsers = new List<CssUserSlim>();
+        private static IList<CssUserSlim> cssSlimUsers = new List<CssUserSlim>();
         private static Guid[] tenantIds;
         private static IList<Tuple<string, CssUser>>[] valuesPerTenant;
         private static ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = ThreadCount };
@@ -82,7 +85,7 @@ namespace ConcurrentDictionaryBenchmark
                 keyValuePairs.Add(new KeyValuePair<Guid, string>(tenantId, smtpAddress));
                 userCacheKeys.Add(new UserCacheKey { TenantId = tenantId, SmtpAddress = smtpAddress });
                 cssUsers.Add(cssUser);
-                //cssSlimUsers.Add(cssUserSlim);
+                cssSlimUsers.Add(cssUserSlim);
                 var nonExistTenantId = Guid.NewGuid();
                 var nonExistSmtpAddress = Utils.GenerateRandomSmtpAddress();
                 nonExistKeyValuePairs.Add(new KeyValuePair<Guid, string>(nonExistTenantId, nonExistSmtpAddress));
@@ -104,73 +107,7 @@ namespace ConcurrentDictionaryBenchmark
             }
         }
 
-        public void MemoryCacheWithSizeLimitAndSlidingExpiration()
-        {
-            var options = new MemoryCacheOptions { SizeLimit = CacheSize };
-            var memcache = new MemoryCache(options);
-
-            Parallel.For(0, UserSize, parallelOptions, i =>
-            {
-                memcache.GetOrCreate(
-                    userCacheKeys[i], 
-                    entry => {
-                        entry.SlidingExpiration = TimeSpan.FromMilliseconds(SlidingExpirationInMs);
-                        entry.Size = 1;
-                        return cssUsers[i];
-                    });
-            });
-
-            Parallel.For(0, GetOrAddOperations, parallelOptions, i =>
-            {
-                var index = i % UserSize;
-
-                memcache.TryGetValue(userCacheKeys[index], out CssUser cssUser);
-                //Assert.IsNotNull(cssUser);
-
-                memcache.TryGetValue(nonExistUserCacheKeys[index], out CssUser cssUser2);
-                //Assert.AreEqual(default(CssUser), cssUser2);
-            });
-        }
-
-        //[Benchmark]
-        public void MemoryCacheParallel()
-        {
-            var options = new MemoryCacheOptions 
-            { 
-                SizeLimit = CacheSize,
-                TrackStatistics = EnableStatistics
-            };
-
-            var memCache = new MemoryCache(options);
-
-            Parallel.For(0, GetOrAddOperations, parallelOptions, i =>
-            {
-                var index = getOrAddOperationIdx[i];
-                memCache.GetOrCreate(
-                    userCacheKeys[index],
-                    entry => {
-                        //entry.SlidingExpiration = TimeSpan.FromMilliseconds(SlidingExpirationInMs);
-                        entry.Size = 1;
-                        return cssUsers[index];
-                    });
-            });
-
-            if (EnableStatistics)
-            {
-                var statistics = memCache.GetCurrentStatistics();
-                if (statistics != null)
-                {
-                    var hitRate = statistics.TotalHits * 1d / (statistics.TotalHits + statistics.TotalMisses);
-                    Console.WriteLine($"MemoryCache stat: Hit Rate: {hitRate * 100}%, Entry Count:{statistics.CurrentEntryCount}, Estimated Size:{statistics.CurrentEstimatedSize}");
-                }
-                else
-                {
-                    Console.WriteLine($"MemoryCache stat: null");
-                }
-            }
-        }
-
-        //[Benchmark]
+        //[Benchmark(Baseline = true)]
         public void MemoryCache()
         {
             var options = new MemoryCacheOptions
@@ -204,6 +141,183 @@ namespace ConcurrentDictionaryBenchmark
             });
 
             Task.WhenAll(tasks).Wait();
+            
+            PrintStatMemoryCache(memCache, nameof(MemoryCache));
+        }
+
+        //[Benchmark]
+        public void MemoryCacheWithSlidingExpiration()
+        {
+            var options = new MemoryCacheOptions
+            {
+                SizeLimit = CacheSize,
+                TrackStatistics = EnableStatistics,
+                ExpirationScanFrequency = TimeSpan.FromMilliseconds(500)
+            };
+
+            var semaphore = new SemaphoreSlim(ThreadCount);
+            var memCache = new MemoryCache(options);
+
+            var tasks = Enumerable.Range(0, GetOrAddOperations).Select(async i =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    var index = getOrAddOperationIdx[i];
+                    memCache.GetOrCreate(
+                        userCacheKeys[index],
+                        entry =>
+                        {
+                            entry.SlidingExpiration = TimeSpan.FromMilliseconds(SlidingExpirationInMs);
+                            entry.Size = 1;
+                            return cssUsers[index];
+                        });
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            Task.WhenAll(tasks).Wait();
+
+            PrintStatMemoryCache(memCache, nameof(MemoryCacheWithSlidingExpiration));
+        }
+
+        [Benchmark]
+        public void ConcurrentLru()
+        {
+            var builder = new ConcurrentLruBuilder<UserCacheKey, CssUser>();
+            builder.WithMetrics().WithCapacity(capacity: CacheSize);
+            var lruCache = builder.Build();
+            var semaphore = new SemaphoreSlim(ThreadCount);
+
+            var tasks = Enumerable.Range(0, GetOrAddOperations).Select(async i =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    var index = getOrAddOperationIdx[i];
+                    lruCache.GetOrAdd(
+                        userCacheKeys[index],
+                        key =>
+                        {
+                            return cssUsers[index];
+                        });
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            Task.WhenAll(tasks).Wait();
+
+            PrintStatBitFasterCache(lruCache, nameof(ConcurrentLru));
+        }
+
+        [Benchmark]
+        public void ConcurrentLruWithAbsoluteExpiration()
+        {
+            var builder = new ConcurrentLruBuilder<UserCacheKey, CssUser>();
+            builder.WithMetrics().WithCapacity(capacity: CacheSize)
+                .WithExpireAfterWrite(TimeSpan.FromMilliseconds(AbsoluteExpirationInMs));
+            
+            var lruCache = builder.Build();
+            var semaphore = new SemaphoreSlim(ThreadCount);
+
+            var tasks = Enumerable.Range(0, GetOrAddOperations).Select(async i =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    var index = getOrAddOperationIdx[i];
+                    lruCache.GetOrAdd(
+                        userCacheKeys[index],
+                        key =>
+                        {
+                            return cssUsers[index];
+                        });
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            Task.WhenAll(tasks).Wait();
+
+            PrintStatBitFasterCache(lruCache, nameof(ConcurrentLru));
+        }
+
+        //[Benchmark]
+        public void ConcurrentLfu()
+        {
+            var lfuCache = new ConcurrentLfu<UserCacheKey, CssUser>(CacheSize);
+            var semaphore = new SemaphoreSlim(ThreadCount);
+
+            var tasks = Enumerable.Range(0, GetOrAddOperations).Select(async i =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    var index = getOrAddOperationIdx[i];
+                    lfuCache.GetOrAdd(
+                        userCacheKeys[index],
+                        key =>
+                        {
+                            return cssUsers[index];
+                        });
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            Task.WhenAll(tasks).Wait();
+
+            PrintStatBitFasterCache(lfuCache, nameof(ConcurrentLfu));
+        }
+
+        #region Parallel
+        //[Benchmark]
+        public void ConcurrentLruParallel()
+        {
+            var lruCache = new ConcurrentLru<UserCacheKey, CssUser>(CacheSize);
+            Parallel.For(0, GetOrAddOperations, parallelOptions, i =>
+            {
+                var index = getOrAddOperationIdx[i];
+                lruCache.GetOrAdd(
+                    userCacheKeys[index],
+                    key => {
+                        return cssUsers[index];
+                    });
+            });
+        }
+
+        //[Benchmark(Baseline = true)]
+        public void MemoryCacheParallel()
+        {
+            var options = new MemoryCacheOptions
+            {
+                SizeLimit = CacheSize,
+                TrackStatistics = EnableStatistics
+            };
+
+            var memCache = new MemoryCache(options);
+
+            Parallel.For(0, GetOrAddOperations, parallelOptions, i =>
+            {
+                var index = getOrAddOperationIdx[i];
+                memCache.GetOrCreate(
+                    userCacheKeys[index],
+                    entry => {
+                        //entry.SlidingExpiration = TimeSpan.FromMilliseconds(SlidingExpirationInMs);
+                        entry.Size = 1;
+                        return cssUsers[index];
+                    });
+            });
 
             if (EnableStatistics)
             {
@@ -216,6 +330,50 @@ namespace ConcurrentDictionaryBenchmark
                 else
                 {
                     Console.WriteLine($"MemoryCache stat: null");
+                }
+            }
+        }
+        #endregion
+
+        #region CssUserSlim
+        //[Benchmark]
+        public void ConcurrentLruCssUserSlim()
+        {
+            var lruCache = new ConcurrentLru<UserCacheKey, CssUserSlim>(CacheSize);
+            var semaphore = new SemaphoreSlim(ThreadCount);
+
+            var tasks = Enumerable.Range(0, GetOrAddOperations).Select(async i =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    var index = getOrAddOperationIdx[i];
+                    lruCache.GetOrAdd(
+                        userCacheKeys[index],
+                        key =>
+                        {
+                            return cssSlimUsers[index];
+                        });
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            Task.WhenAll(tasks).Wait();
+
+            if (EnableStatistics)
+            {
+                var metrics = lruCache.Metrics.Value;
+
+                if (lruCache.Metrics.HasValue)
+                {
+                    Console.WriteLine($"{nameof(ConcurrentLru)} stat: Hit Rate: {metrics.HitRatio * 100}%, Evicted :{metrics.Evicted}, Size: {lruCache.Count}");
+                }
+                else
+                {
+                    Console.WriteLine($"{nameof(ConcurrentLru)} stat: null");
                 }
             }
         }
@@ -244,7 +402,7 @@ namespace ConcurrentDictionaryBenchmark
                         {
                             //entry.SlidingExpiration = TimeSpan.FromMilliseconds(SlidingExpirationInMs);
                             entry.Size = 1;
-                            return cssUsers[index];
+                            return cssSlimUsers[index];
                         });
                 }
                 finally
@@ -269,62 +427,42 @@ namespace ConcurrentDictionaryBenchmark
                 }
             }
         }
+        #endregion
 
-        [Benchmark]
-        public void ConcurrentLruParallel()
+        #region print statistics
+        private void PrintStatMemoryCache(IMemoryCache memoryCache, string methodName)
         {
-            var lruCache = new ConcurrentLru<UserCacheKey, CssUser>(CacheSize);
-            Parallel.For(0, GetOrAddOperations, parallelOptions, i =>
-            {
-                var index = getOrAddOperationIdx[i];
-                lruCache.GetOrAdd(
-                    userCacheKeys[index],
-                    key => {
-                        return cssUsers[index];
-                    });
-            });
-        }
-
-        [Benchmark]
-        public void ConcurrentLru()
-        {
-            var lruCache = new ConcurrentLru<UserCacheKey, CssUser>(CacheSize);
-            var semaphore = new SemaphoreSlim(ThreadCount);
-
-            var tasks = Enumerable.Range(0, GetOrAddOperations).Select(async i =>
-            {
-                await semaphore.WaitAsync();
-                try
-                {
-                    var index = getOrAddOperationIdx[i];
-                    lruCache.GetOrAdd(
-                        userCacheKeys[index],
-                        key =>
-                        {
-                            return cssUsers[index];
-                        });
-                }
-                finally
-                {
-                    semaphore.Release();
-                }
-            });
-
-            Task.WhenAll(tasks).Wait();
-
             if (EnableStatistics)
             {
-                var metrics = lruCache.Metrics.Value;
-                
-                if (lruCache.Metrics.HasValue)
+                var statistics = memoryCache.GetCurrentStatistics();
+                if (statistics != null)
                 {
-                    Console.WriteLine($"{nameof(ConcurrentLru)} stat: Hit Rate: {metrics.HitRatio * 100}%, Evicted :{metrics.Evicted}, Size: {lruCache.Count}");
+                    var hitRate = statistics.TotalHits * 1d / (statistics.TotalHits + statistics.TotalMisses);
+                    Console.WriteLine($"{methodName}: Hit Rate: {hitRate * 100}%, Count:{statistics.CurrentEntryCount}");
                 }
                 else
                 {
-                    Console.WriteLine($"{nameof(ConcurrentLru)} stat: null");
+                    Console.WriteLine($"{methodName}: null");
                 }
             }
         }
+        
+        private void PrintStatBitFasterCache<K,V>(ICache<K,V> memCache, string methodName)
+        {
+            if (EnableStatistics)
+            {
+                var metrics = memCache.Metrics.Value;
+
+                if (memCache.Metrics.HasValue)
+                {
+                    Console.WriteLine($"{methodName}: Hit Rate: {metrics.HitRatio * 100}%, Count: {memCache.Count}");
+                }
+                else
+                {
+                    Console.WriteLine($"{methodName}: null");
+                }
+            }
+        }
+        #endregion
     }
 }

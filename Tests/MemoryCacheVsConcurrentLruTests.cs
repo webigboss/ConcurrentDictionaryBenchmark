@@ -19,21 +19,29 @@ namespace Tests
             MemoryCacheVsConcurrentLru.OneSDPercent = oneSDPercentage;
             MemoryCacheVsConcurrentLru.GetOrAddOperations = getOrAddOps;
 
-            for (var i = 0; i < 5; i++)
+            var runTimes = 3;
+            long timeMemoryCache = 0;
+            long timeConcurrentLru = 0;
+            Console.WriteLine($"CacheSize: {cacheSize}, UserSize: 200000, GetOrAddOps: {getOrAddOps}, OneSDPercentage: {oneSDPercentage}");
+            for (var i = 0; i < runTimes; i++)
             {
                 benchmark.Setup();
-                Run(benchmark.MemoryCache, nameof(benchmark.MemoryCache), i);
-                Run(benchmark.ConcurrentLru, nameof(benchmark.ConcurrentLru), i);
+                Console.WriteLine($"Run#{i + 1}");
+                timeMemoryCache += Run(benchmark.MemoryCache, nameof(benchmark.MemoryCache), i);
+                timeMemoryCache += Run(benchmark.MemoryCacheWithSlidingExpiration, nameof(benchmark.MemoryCacheWithSlidingExpiration), i);
+                timeConcurrentLru += Run(benchmark.ConcurrentLru, nameof(benchmark.ConcurrentLru), i);
+                timeConcurrentLru += Run(benchmark.ConcurrentLfu, nameof(benchmark.ConcurrentLfu), i);
             }
         }
 
-        private void Run(Action runDelegate, string functionName, int run)
+        private long Run(Action runDelegate, string functionName, int run)
         {
             var sw = new Stopwatch();
             sw.Start();
             runDelegate();
             sw.Stop();
             Console.WriteLine($"{functionName} Run#{run + 1}: {sw.ElapsedMilliseconds} ms");
+            return sw.ElapsedMilliseconds;
         }
     }
 }

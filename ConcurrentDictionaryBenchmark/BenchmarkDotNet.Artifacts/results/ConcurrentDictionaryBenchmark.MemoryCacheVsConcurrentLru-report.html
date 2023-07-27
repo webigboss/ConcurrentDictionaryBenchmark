@@ -2,7 +2,7 @@
 <html lang='en'>
 <head>
 <meta charset='utf-8' />
-<title>ConcurrentDictionaryBenchmark.MemoryCacheVsConcurrentLru-20230718-215726</title>
+<title>ConcurrentDictionaryBenchmark.MemoryCacheVsConcurrentLru-20230720-124530</title>
 
 <style type="text/css">
 	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
@@ -16,14 +16,18 @@
 BenchmarkDotNet=v0.13.5, OS=Windows 11 (10.0.22621.1992/22H2/2022Update/SunValley2)
 Intel Core i9-10900K CPU 3.70GHz, 1 CPU, 20 logical and 10 physical cores
 .NET SDK=7.0.400-preview.23322.28
-  [Host] : .NET 6.0.20 (6.0.2023.32017), X64 RyuJIT AVX2
+  [Host]     : .NET 6.0.20 (6.0.2023.32017), X64 RyuJIT AVX2
+  DefaultJob : .NET 6.0.20 (6.0.2023.32017), X64 RyuJIT AVX2
 </code></pre>
 <pre><code></code></pre>
 
 <table>
-<thead><tr><th>Method</th><th>UserSize</th><th>CacheSize</th><th>GetOrAddOperations</th><th>ThreadCount</th><th>EnableStatistics</th><th>Mean</th><th>Error</th>
+<thead><tr><th>                       Method</th><th>UserSize</th><th>CacheSize</th><th>GetOrAddOperations</th><th>ThreadCount</th><th>EnableStatistics</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Gen0</th><th>Gen1</th><th>Allocated</th>
 </tr>
-</thead><tbody><tr><td>MemoryCache</td><td>200000</td><td>50000</td><td>1000000</td><td>4</td><td>False</td><td>NA</td><td>NA</td>
+</thead><tbody><tr><td>ConcurrentLru</td><td>200000</td><td>10000</td><td>1000000</td><td>10</td><td>False</td><td>653.0 ms</td><td>13.06 ms</td><td>31.79 ms</td><td>23000.0000</td><td>3000.0000</td><td>256.37 MB</td>
+</tr><tr><td>ConcurrentLruWithAbsoluteExpiration</td><td>200000</td><td>10000</td><td>1000000</td><td>10</td><td>False</td><td>646.8 ms</td><td>9.90 ms</td><td>8.27 ms</td><td>24000.0000</td><td>4000.0000</td><td>265.51 MB</td>
+</tr><tr><td>ConcurrentLru</td><td>200000</td><td>50000</td><td>1000000</td><td>10</td><td>False</td><td>689.0 ms</td><td>5.52 ms</td><td>4.89 ms</td><td>14000.0000</td><td>4000.0000</td><td>171.4 MB</td>
+</tr><tr><td>ConcurrentLruWithAbsoluteExpiration</td><td>200000</td><td>50000</td><td>1000000</td><td>10</td><td>False</td><td>761.7 ms</td><td>9.65 ms</td><td>9.48 ms</td><td>17000.0000</td><td>4000.0000</td><td>205.8 MB</td>
 </tr></tbody></table>
 </body>
 </html>
