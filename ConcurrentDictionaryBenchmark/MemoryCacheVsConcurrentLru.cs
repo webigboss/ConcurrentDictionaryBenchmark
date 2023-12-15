@@ -30,7 +30,7 @@ namespace ConcurrentDictionaryBenchmark
 
         //[Params(5)]
         public static int SlidingExpirationInMs { get; set; } = 1000;
-        public static int AbsoluteExpirationInMs { get; set; } = 200;
+        public static int BitFasterLruAbsoluteExpirationInMs { get; set; } = 200;
 
         [Params(false)]
         public bool EnableStatistics { get; set; } = true;
@@ -208,13 +208,13 @@ namespace ConcurrentDictionaryBenchmark
             PrintStatBitFasterCache(lruCache, nameof(ConcurrentLru));
         }
 
-        //[Benchmark]
+        [Benchmark]
         public void ConcurrentLruWithAbsoluteExpiration()
         {
             var builder = new ConcurrentLruBuilder<UserCacheKey, CssUser>();
             builder.WithMetrics().WithCapacity(capacity: CacheSize)
-                .WithExpireAfterWrite(TimeSpan.FromMilliseconds(AbsoluteExpirationInMs));
-            
+                .WithExpireAfterWrite(TimeSpan.FromMilliseconds(BitFasterLruAbsoluteExpirationInMs));
+
             var lruCache = builder.Build();
             var semaphore = new SemaphoreSlim(ThreadCount);
 
@@ -239,7 +239,7 @@ namespace ConcurrentDictionaryBenchmark
 
             Task.WhenAll(tasks).Wait();
 
-            PrintStatBitFasterCache(lruCache, nameof(ConcurrentLru));
+            PrintStatBitFasterCache(lruCache, nameof(ConcurrentLruWithAbsoluteExpiration));
         }
 
         [Benchmark]

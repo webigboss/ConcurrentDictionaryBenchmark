@@ -31,6 +31,7 @@ namespace Tests
                 timeMemoryCache += Run(benchmark.MemoryCacheWithSlidingExpiration, nameof(benchmark.MemoryCacheWithSlidingExpiration), i);
                 timeConcurrentLru += Run(benchmark.ConcurrentLru, nameof(benchmark.ConcurrentLru), i);
                 timeConcurrentLru += Run(benchmark.ConcurrentLfu, nameof(benchmark.ConcurrentLfu), i);
+                timeConcurrentLru += Run(benchmark.ConcurrentLruWithAbsoluteExpiration, nameof(benchmark.ConcurrentLruWithAbsoluteExpiration), i);
             }
         }
 
