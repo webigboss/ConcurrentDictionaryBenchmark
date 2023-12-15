@@ -1,5 +1,7 @@
 ﻿using BenchmarkDotNet.Running;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Substrate.CompactSignalStore.Sdk.Implementation;
+using System;
 using System.Collections.Concurrent;
 
 namespace ConcurrentDictionaryBenchmark
@@ -12,7 +14,8 @@ namespace ConcurrentDictionaryBenchmark
             //BenchmarkRunner.Run<GuidKeyBenchmark>();
             //BenchmarkRunner.Run<TrieVsDictVsMemCache>();
             //BenchmarkRunner.Run<TrieVsDictVsMemCacheConcurrency>();
-            BenchmarkRunner.Run<MemoryCacheVsConcurrentLru>();
+            //BenchmarkRunner.Run<MemoryCacheVsConcurrentLru>();
+            //BenchmarkRunner.Run<SignalClientBenchmark>();
             //BenchmarkRunner.Run<CachePeerCompare>();
 
             //int counter = 0;
@@ -55,6 +58,9 @@ namespace ConcurrentDictionaryBenchmark
             //});
 
             //Console.ReadLine();
+
+            var clientConfig = new CssSdkClientConfig { ApplicationId = Guid.NewGuid() };
+            var signalClient = new SignalClient(clientConfig);
         }
     }
 }
